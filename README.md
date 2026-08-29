@@ -8,15 +8,15 @@ No build step, no dependencies — just HTML + CSS + vanilla JS.
 ```
 index.html            — the page
 css/style.css         — styling (light theme, responsive)
-js/main.js            — loads data, renders tiles, filters + search
-data/publications.json — all publications (edit this to update content)
+js/main.js            — renders tiles, filters + search
+data/publications.js  — all publications (edit this to update content)
 ```
 
 ## Update publications
 
-Edit `data/publications.json`. Each entry:
+Edit `data/publications.js` (it is a plain script that sets `window.PUBLICATIONS`). Each entry:
 
-```json
+```js
 {
   "id": 70,
   "year": 2026,
@@ -34,7 +34,8 @@ Cards are sorted by year (newest first) automatically.
 
 ## Run locally
 
-Any static server works (fetch() doesn't work over `file://`):
+Works out of the box — just double-click `index.html` (no server needed).
+A static server also works if you prefer:
 
 ```
 npx serve .

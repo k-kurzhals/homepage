@@ -193,16 +193,13 @@
     apply();
   }
 
-  fetch("data/publications.json")
-    .then(function (r) {
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return r.json();
-    })
-    .then(init)
-    .catch(function (err) {
-      grid.innerHTML =
-        '<p class="empty">Could not load publications (' +
-        esc(err.message) + '). Open the site over HTTP (e.g. <code>npx serve</code> or GitHub Pages) instead of via <code>file://</code>.</p>';
-      empty.hidden = true;
-    });
+  /* Data is loaded via <script src="data/publications.js"> (sets window.PUBLICATIONS)
+     so the page works both over HTTP and when opened directly via file://. */
+  var data = window.PUBLICATIONS;
+  if (!data || !data.publications) {
+    grid.innerHTML =
+      '<p class="empty">Could not load publications — is <code>data/publications.js</code> present next to <code>index.html</code>?</p>';
+    return;
+  }
+  init(data);
 })();

@@ -1,4 +1,5 @@
-{
+/* Publication data — plain JS so the page also works when opened via file://. */
+window.PUBLICATIONS = {
   "profile": {
     "name": "Kuno Kurzhals",
     "title": "Dr.",
@@ -86,3 +87,4 @@
     {"id": 69, "year": 2013, "cat": "journal", "title": "Evaluation of Fast-Forward Video Visualization", "authors": ["H\u00f6ferlin, M.", "Kurzhals, K.", "Hoferlin, B.", "Heidemann, G.", "Weiskopf, D."], "venue": "IEEE Transactions on Visualization and Computer Graphics 18.12", "pages": "2095\u20132103", "doi": "10.1109/tvcg.2012.222"}
   ]
 }
+;
