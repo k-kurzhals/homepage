@@ -72,8 +72,31 @@
         '<span class="doi-only">' + (p.pages ? "pp. " + esc(p.pages) : "—") + "</span>";
     }
 
+    /* Optional card image.
+       - "image": "path.png"  -> explicit file
+       - "image": true        -> auto-detect img/<title>.png/.jpg/.jpeg/.webp */
+    var media = "";
+    if (p.image) {
+      var srcs;
+      if (typeof p.image === "string") {
+        srcs = [p.image];
+      } else {
+        var enc = encodeURIComponent(p.title);
+        srcs = [
+          "img/" + enc + ".png",
+          "img/" + enc + ".jpg",
+          "img/" + enc + ".jpeg",
+          "img/" + enc + ".webp"
+        ];
+      }
+      media =
+        '<div class="card-media"><img alt="" src="' + esc(srcs[0]) +
+        '" data-cands="' + esc(srcs.join("|")) + '" loading="lazy"></div>';
+    }
+
     return (
       '<article class="card">' +
+      media +
       '<div class="card-meta"><span class="year-badge">' + p.year + "</span>" +
       "<span>" + esc(shortVenue(p.venue)) + "</span></div>" +
       "<h3>" + title + "</h3>" +
@@ -134,7 +157,26 @@
     });
 
     grid.innerHTML = out.map(cardHTML).join("");
+    wireMediaFallbacks();
     empty.hidden = out.length !== 0;
+  }
+
+  /* For auto-detected images: walk the candidate extensions until one
+     loads; if none exist, remove the media box entirely. */
+  function wireMediaFallbacks() {
+    grid.querySelectorAll(".card-media img[data-cands]").forEach(function (img) {
+      var cands = img.dataset.cands.split("|");
+      var i = 0;
+      img.onerror = function () {
+        i++;
+        if (i < cands.length) {
+          img.src = cands[i];
+        } else {
+          var box = img.parentNode;
+          if (box) box.remove();
+        }
+      };
+    });
   }
 
   function buildFilters() {
