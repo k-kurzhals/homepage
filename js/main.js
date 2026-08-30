@@ -91,13 +91,10 @@
         '" loading="lazy"></div>';
     }
 
-    var doiLink = link ?
-      '<a class="card-link" href="' + esc(link) + '" target="_blank" rel="noopener">DOI →</a>' : "";
     var videoBtn = p.video ?
       '<a class="card-video" href="' + esc(p.video) + '" data-video="' + esc(p.video) +
       '" title="Watch video" aria-label="Watch video">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
-    var right = doiLink;
 
     var detail = "";
     if (p.detail) {
@@ -116,8 +113,7 @@
       "<h3>" + title + "</h3>" +
       '<p class="card-desc">' + desc + "</p>" +
       detail +
-      '<div class="card-foot"><span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) +
-      '</span><span class="card-foot-right">' + right + "</span></div>" +
+      '<div class="card-foot"><span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) + "</span></div>" +
       "</article>"
     );
   }
