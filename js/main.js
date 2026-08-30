@@ -213,6 +213,14 @@
       a.addEventListener("click", function (ev) {
         ev.preventDefault();
         var url = a.getAttribute("href");
+        /* YouTube's embed player requires a real http(s) origin. Over
+           file:// the origin is opaque / the referrer is empty, so the
+           player fails to configure (YouTube "Error 153"). Fall back to
+           opening the watch page in a new tab in that case. */
+        if (location.protocol === "file:") {
+          window.open(url, "_blank", "noopener");
+          return;
+        }
         var m = /v=([A-Za-z0-9_-]{6,})/.exec(url);
         var id = m ? m[1] : "";
         frame.src = "https://www.youtube.com/embed/" + id + "?rel=0";
