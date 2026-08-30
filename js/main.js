@@ -60,7 +60,8 @@
 
     /* Optional card image.
        - "image": "path.png"  -> explicit file
-       - "image": true        -> auto-detect img/<title>.(png|jpg|jpeg|webp) */
+       - "image": true        -> auto-detect img/<title>.(png|jpg|jpeg|webp)
+       - no image             -> placeholder banner */
     var media = "";
     if (p.image) {
       var srcs;
@@ -83,6 +84,11 @@
       media =
         '<div class="card-media"><img alt="" src="' + esc(srcs[0]) +
         '" data-cands="' + esc(srcs.join("|")) + '" loading="lazy"></div>';
+    } else {
+      /* No image -> placeholder banner. */
+      media =
+        '<div class="card-media"><img alt="" src="' + PLACEHOLDER +
+        '" loading="lazy"></div>';
     }
 
     var doiLink = link ?
@@ -141,7 +147,8 @@
   }
 
   /* For auto-detected images: walk the candidate extensions until one
-     loads; if none exist, remove the media box entirely. */
+     loads; if none exist, swap in the placeholder banner. */
+  var PLACEHOLDER = "img/placeholder.png";
   function wireMediaFallbacks() {
     grid.querySelectorAll(".card-media img[data-cands]").forEach(function (img) {
       var cands = img.dataset.cands.split("|");
@@ -151,8 +158,8 @@
         if (i < cands.length) {
           img.src = cands[i];
         } else {
-          var box = img.parentNode;
-          if (box) box.remove();
+          img.onerror = null;
+          img.src = PLACEHOLDER;
         }
       };
     });
