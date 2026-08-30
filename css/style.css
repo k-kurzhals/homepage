@@ -93,15 +93,6 @@ a { color: inherit; }
   align-items: start;
 }
 
-.eyebrow {
-  margin: 0 0 14px;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--accent);
-}
-
 .hero h1 {
   margin: 0 0 6px;
   font-size: clamp(38px, 5.4vw, 58px);
@@ -119,7 +110,7 @@ a { color: inherit; }
   margin: 0 0 20px;
   font-size: 17px;
   font-weight: 600;
-  color: var(--ink-soft);
+  color: var(--accent);
 }
 
 .bio {
