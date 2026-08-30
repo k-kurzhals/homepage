@@ -107,7 +107,7 @@ a { color: inherit; }
 }
 
 .role {
-  margin: 0 0 20px;
+  margin: 0 0 12px;
   font-size: 17px;
   font-weight: 600;
   color: var(--accent);
