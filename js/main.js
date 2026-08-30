@@ -57,9 +57,6 @@
     var desc =
       '<span class="authors">' + authorsHTML(p.authors) + "</span>" +
       '<span class="sep">·</span><span class="venue">' + esc(p.venue) + "</span>";
-    if (p.pages) {
-      desc += ", pp. " + esc(p.pages);
-    }
 
     /* Optional card image.
        - "image": "path.png"  -> explicit file
@@ -95,9 +92,6 @@
       '" title="Watch video" aria-label="Watch video">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
     var right = doiLink;
-    if (!right && p.pages) {
-      right = '<span class="doi-only">pp. ' + esc(p.pages) + "</span>";
-    }
 
     var detail = "";
     if (p.detail) {
