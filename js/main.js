@@ -61,20 +61,9 @@
       desc += ", pp. " + esc(p.pages);
     }
 
-    var foot;
-    if (link) {
-      foot =
-        '<span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) + "</span>" +
-        '<a class="card-link" href="' + esc(link) + '" target="_blank" rel="noopener">DOI →</a>';
-    } else {
-      foot =
-        '<span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) + "</span>" +
-        '<span class="doi-only">' + (p.pages ? "pp. " + esc(p.pages) : "—") + "</span>";
-    }
-
     /* Optional card image.
        - "image": "path.png"  -> explicit file
-       - "image": true        -> auto-detect img/<title>.png/.jpg/.jpeg/.webp */
+       - "image": true        -> auto-detect img/<title>.(png|jpg|jpeg|webp) */
     var media = "";
     if (p.image) {
       var srcs;
@@ -99,6 +88,26 @@
         '" data-cands="' + esc(srcs.join("|")) + '" loading="lazy"></div>';
     }
 
+    var doiLink = link ?
+      '<a class="card-link" href="' + esc(link) + '" target="_blank" rel="noopener">DOI →</a>' : "";
+    var videoBtn = p.video ?
+      '<a class="card-video" href="' + esc(p.video) + '" data-video="' + esc(p.video) +
+      '" title="Watch video" aria-label="Watch video">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
+    var right = doiLink + videoBtn;
+    if (!right && p.pages) {
+      right = '<span class="doi-only">pp. ' + esc(p.pages) + "</span>";
+    }
+
+    var detail = "";
+    if (p.detail) {
+      detail =
+        '<div class="card-detail">' +
+        '<p class="card-detail-text">' + esc(p.detail) + "</p>" +
+        '<button type="button" class="detail-toggle" aria-expanded="false">More ↓</button>' +
+        "</div>";
+    }
+
     return (
       '<article class="card">' +
       media +
@@ -106,7 +115,9 @@
       "<span>" + esc(shortVenue(p.venue)) + "</span></div>" +
       "<h3>" + title + "</h3>" +
       '<p class="card-desc">' + desc + "</p>" +
-      '<div class="card-foot">' + foot + "</div>" +
+      detail +
+      '<div class="card-foot"><span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) +
+      '</span><span class="card-foot-right">' + right + "</span></div>" +
       "</article>"
     );
   }
@@ -163,6 +174,7 @@
 
     grid.innerHTML = out.map(cardHTML).join("");
     wireMediaFallbacks();
+    wireInteractions();
     empty.hidden = out.length !== 0;
   }
 
@@ -181,6 +193,31 @@
           if (box) box.remove();
         }
       };
+    });
+  }
+
+   /* Collapse/expand detail text + open video modals. */
+  function wireInteractions() {
+    grid.querySelectorAll(".detail-toggle").forEach(function (btn) {
+      btn.addEventListener("click", function () {
+        var box = btn.closest(".card-detail");
+        var open = box.classList.toggle("open");
+        btn.setAttribute("aria-expanded", open ? "true" : "false");
+        btn.textContent = open ? "Less ↑" : "More ↓";
+      });
+    });
+
+    var modal = document.getElementById("video-modal");
+    var frame = document.getElementById("video-frame");
+    grid.querySelectorAll(".card-video").forEach(function (a) {
+      a.addEventListener("click", function (ev) {
+        ev.preventDefault();
+        var url = a.getAttribute("href");
+        var m = /v=([A-Za-z0-9_-]{6,})/.exec(url);
+        var id = m ? m[1] : "";
+        frame.src = "https://www.youtube.com/embed/" + id + "?rel=0";
+        modal.classList.add("show");
+      });
     });
   }
 
@@ -235,6 +272,22 @@
     searchInput.addEventListener("input", function () {
       state.query = this.value;
       apply();
+    });
+
+    /* Video modal: close on X, backdrop, or Escape. */
+    var modal = document.getElementById("video-modal");
+    var frame = document.getElementById("video-frame");
+    var close = document.getElementById("video-close");
+    function closeModal() {
+      modal.classList.remove("show");
+      frame.src = "";
+    }
+    if (close) close.addEventListener("click", closeModal);
+    if (modal) modal.addEventListener("click", function (ev) {
+      if (ev.target === modal) closeModal();
+    });
+    document.addEventListener("keydown", function (ev) {
+      if (ev.key === "Escape" && modal.classList.contains("show")) closeModal();
     });
 
     apply();
