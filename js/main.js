@@ -94,7 +94,7 @@
       '<a class="card-video" href="' + esc(p.video) + '" data-video="' + esc(p.video) +
       '" title="Watch video" aria-label="Watch video">' +
       '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
-    var right = doiLink + videoBtn;
+    var right = doiLink;
     if (!right && p.pages) {
       right = '<span class="doi-only">pp. ' + esc(p.pages) + "</span>";
     }
@@ -112,7 +112,7 @@
       '<article class="card">' +
       media +
       '<div class="card-meta"><span class="year-badge">' + p.year + "</span>" +
-      "<span>" + esc(shortVenue(p.venue)) + "</span></div>" +
+      videoBtn + "</div>" +
       "<h3>" + title + "</h3>" +
       '<p class="card-desc">' + desc + "</p>" +
       detail +
@@ -120,38 +120,6 @@
       '</span><span class="card-foot-right">' + right + "</span></div>" +
       "</article>"
     );
-  }
-
-  /* compact venue name for the card meta row */
-  function shortVenue(v) {
-    var map = [
-      ["Computer Graphics Forum", "CGF"],
-      ["IEEE Transactions on Visualization and Computer Graphics", "IEEE TVCG"],
-      ["IEEE Computer Graphics and Applications", "IEEE CG&A"],
-      ["ACM Symposium on Eye Tracking Research and Applications", "ETRA"],
-      ["CHI Conference on Human Factors in Computing Systems", "CHI"],
-      ["The Visual Computer", "The Visual Computer"],
-      ["Computers & Graphics", "Computers & Graphics"],
-      ["Proceedings of the ACM on Human-Computer Interaction", "PACM HCI"],
-      ["Proceedings of the ACM on Computer Graphics and Interactive Techniques", "PACM CGIT"],
-      ["Information Visualization", "Information Visualization"],
-      ["IEEE Transactions on Multimedia", "IEEE TMM"],
-      ["Spatial Cognition", "Spatial Cognition & Comp."],
-      ["Computing in Science", "Comput. in Sci. & Eng."],
-      ["it – Information Technology", "it – Information Technology"],
-      ["Hawaii International Conference on System Sciences", "HICSS"],
-      ["EuroVis", "EuroVis"],
-      ["Extended Abstracts of the CHI", "CHI Extended Abstracts"],
-      ["IEEE Conference on Virtual Reality", "IEEE VR"],
-      ["IEEE BELIV", "IEEE BELIV"]
-    ];
-    for (var i = 0; i < map.length; i++) {
-      if (v.indexOf(map[i][0]) === 0 || v.indexOf(map[i][0]) !== -1) {
-        var rest = v.replace(map[i][0], "").replace(/^[\s.·]+/, "");
-        return map[i][1] + (rest ? " " + rest : "");
-      }
-    }
-    return v.length > 46 ? v.slice(0, 45) + "…" : v;
   }
 
   /* ---------- filtering ---------- */

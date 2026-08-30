@@ -437,8 +437,8 @@ a { color: inherit; }
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 30px;
-  height: 30px;
+  width: 26px;
+  height: 26px;
   border-radius: 50%;
   background: var(--ink);
   color: #fff;
@@ -446,7 +446,7 @@ a { color: inherit; }
   transition: transform 0.15s ease, background 0.15s ease;
 }
 
-.card-video svg { width: 15px; height: 15px; fill: #fff; }
+.card-video svg { width: 13px; height: 13px; fill: #fff; }
 
 .card-video:hover {
   transform: scale(1.08);
