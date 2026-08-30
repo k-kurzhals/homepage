@@ -81,13 +81,18 @@
       if (typeof p.image === "string") {
         srcs = [p.image];
       } else {
-        var enc = encodeURIComponent(p.title);
-        srcs = [
-          "img/" + enc + ".png",
-          "img/" + enc + ".jpg",
-          "img/" + enc + ".jpeg",
-          "img/" + enc + ".webp"
-        ];
+        /* Try the exact title, then a normalized one (OS-friendly file
+           names): trailing "?" dropped, ":" replaced by " - ". */
+        var variants = [p.title];
+        var norm = p.title.trim().replace(/\?+$/, "").replace(/:\s*/g, " - ");
+        if (norm !== p.title) variants.push(norm);
+        srcs = [];
+        [".png", ".jpg", ".jpeg", ".webp"].forEach(function (ext) {
+          variants.forEach(function (v) {
+            var s = "img/" + encodeURIComponent(v) + ext;
+            if (srcs.indexOf(s) === -1) srcs.push(s);
+          });
+        });
       }
       media =
         '<div class="card-media"><img alt="" src="' + esc(srcs[0]) +
