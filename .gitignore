@@ -1,2 +1,12 @@
+# not needed to load the page
+oldpage/
+update/
+Publication_List.pdf
+preview_hero.png
+signal-*.jpg
+_page_top.png
+
+# misc
 node_modules/
 .DS_Store
+Thumbs.db
