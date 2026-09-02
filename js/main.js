@@ -14,13 +14,17 @@
     thesis: "Dissertation"
   };
 
-  var state = { all: [], filter: "all", query: "" };
+  var state = { all: [], filter: "all", query: "", view: "grid" };
 
   var grid = document.getElementById("grid");
+  var timeline = document.getElementById("timeline");
   var empty = document.getElementById("empty");
   var filtersEl = document.getElementById("filters");
   var searchInput = document.getElementById("search-input");
   var pubCount = document.getElementById("pub-count");
+  var viewGrid = document.getElementById("view-grid");
+  var viewTimeline = document.getElementById("view-timeline");
+  var viewBtns = Array.prototype.slice.call(document.querySelectorAll(".view-btn"));
 
   /* ---------- helpers ---------- */
 
@@ -118,6 +122,79 @@
     );
   }
 
+  function timelineHTML(p) {
+    var link = doiURL(p);
+    var title = link
+      ? '<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(p.title) + "</a>"
+      : esc(p.title);
+
+    /* Image handling mirrors cardHTML (string path / auto-detect / placeholder). */
+    var media;
+    if (p.image) {
+      var srcs;
+      if (typeof p.image === "string") {
+        srcs = [p.image];
+      } else {
+        var variants = [p.title];
+        var norm = p.title.trim().replace(/\?+$/, "").replace(/:\s*/g, " - ");
+        if (norm !== p.title) variants.push(norm);
+        srcs = [];
+        [".png", ".jpg", ".jpeg", ".webp"].forEach(function (ext) {
+          variants.forEach(function (v) {
+            var s = "img/" + encodeURIComponent(v) + ext;
+            if (srcs.indexOf(s) === -1) srcs.push(s);
+          });
+        });
+      }
+      media =
+        '<div class="tl-media"><img alt="" src="' + esc(srcs[0]) +
+        '" data-cands="' + esc(srcs.join("|")) + '" loading="lazy"></div>';
+    } else {
+      media =
+        '<div class="tl-media"><img alt="" src="' + PLACEHOLDER + '" loading="lazy"></div>';
+    }
+
+    var desc =
+      '<span class="tl-year">' + p.year + "</span>" +
+      '<span class="tl-title">' + title + "</span>" +
+      '<span class="tl-venue">' + esc(p.venue) + "</span>";
+
+    var videoBtn = p.video ?
+      '<a class="card-video" href="' + esc(p.video) + '" data-video="' + esc(p.video) +
+      '" title="Watch video" aria-label="Watch video">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
+
+    var body =
+      '<p class="tl-authors">' + authorsHTML(p.authors) + "</p>" +
+      '<p class="tl-venue2">' + esc(p.venue) + "</p>";
+    if (p.detail) {
+      body += '<p class="tl-detail">' + esc(p.detail) + "</p>";
+    }
+    body +=
+      '<div class="tl-foot"><span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) + "</span>" +
+      (videoBtn
+        ? '<span class="tl-video-slot">' + videoBtn + "</span>"
+        : "") +
+      (p.doi || p.url
+        ? '<a class="tl-link" href="' + esc(doiURL(p)) + '" target="_blank" rel="noopener">Paper ↗</a>'
+        : "") +
+      "</div>";
+
+    return (
+      '<article class="tl-item" data-year="' + p.year + '">' +
+      '<button type="button" class="tl-trigger" aria-expanded="false">' +
+      media +
+      '<span class="tl-hover"><span class="tl-hover-authors">' + authorsHTML(p.authors) + "</span></span>" +
+      '<span class="tl-brief">' + desc + "</span>" +
+      "</button>" +
+      '<div class="tl-card" role="region" aria-label="' + esc(p.title) + '">' +
+      '<h3 class="tl-card-title">' + title + "</h3>" +
+      body +
+      "</div>" +
+      "</article>"
+    );
+  }
+
   /* ---------- filtering ---------- */
 
   function apply() {
@@ -137,6 +214,27 @@
     });
 
     grid.innerHTML = out.map(cardHTML).join("");
+
+    /* Timeline: group by year, newest year first. */
+    var groups = [];
+    var byYear = {};
+    out.forEach(function (p) {
+      if (!byYear[p.year]) {
+        byYear[p.year] = [];
+        groups.push(p.year);
+      }
+      byYear[p.year].push(p);
+    });
+    groups.sort(function (a, b) { return b - a; });
+    timeline.innerHTML = groups.map(function (y) {
+      return (
+        '<section class="tl-year-block">' +
+        '<div class="tl-year-label" aria-hidden="true">' + y + "</div>" +
+        '<div class="tl-lane">' + byYear[y].map(timelineHTML).join("") + "</div>" +
+        "</section>"
+      );
+    }).join("");
+
     wireMediaFallbacks();
     wireInteractions();
     empty.hidden = out.length !== 0;
@@ -146,7 +244,7 @@
      loads; if none exist, swap in the placeholder banner. */
   var PLACEHOLDER = "img/placeholder.png";
   function wireMediaFallbacks() {
-    grid.querySelectorAll(".card-media img[data-cands]").forEach(function (img) {
+    document.querySelectorAll(".card-media img[data-cands], .tl-media img[data-cands]").forEach(function (img) {
       var cands = img.dataset.cands.split("|");
       var i = 0;
       img.onerror = function () {
@@ -161,7 +259,7 @@
     });
   }
 
-   /* Collapse/expand detail text + open video modals. */
+  /* Collapse/expand detail text + open video modals + timeline items. */
   function wireInteractions() {
     grid.querySelectorAll(".detail-toggle").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -172,9 +270,27 @@
       });
     });
 
+    /* Timeline items: click toggles the detail card. */
+    document.querySelectorAll(".tl-trigger").forEach(function (btn) {
+      btn.addEventListener("click", function (ev) {
+        /* Title links inside the trigger still open the paper. */
+        if (ev.target.closest("a")) return;
+        var item = btn.closest(".tl-item");
+        var wasOpen = item.classList.contains("open");
+        document.querySelectorAll(".tl-item.open").forEach(function (o) {
+          o.classList.remove("open");
+          o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+        });
+        if (!wasOpen) {
+          item.classList.add("open");
+          btn.setAttribute("aria-expanded", "true");
+        }
+      });
+    });
+
     var modal = document.getElementById("video-modal");
     var frame = document.getElementById("video-frame");
-    grid.querySelectorAll(".card-video").forEach(function (a) {
+    document.querySelectorAll(".card-video").forEach(function (a) {
       a.addEventListener("click", function (ev) {
         ev.preventDefault();
         var url = a.getAttribute("href");
@@ -245,6 +361,25 @@
     searchInput.addEventListener("input", function () {
       state.query = this.value;
       apply();
+    });
+
+    /* View toggle: grid <-> timeline (both views stay rendered, so the
+       CSS crossfade is cheap and no re-render is needed). */
+    function setView(view) {
+      if (view !== "grid" && view !== "timeline") return;
+      state.view = view;
+      viewGrid.hidden = view !== "grid";
+      viewTimeline.hidden = view !== "timeline";
+      viewBtns.forEach(function (b) {
+        var on = b.dataset.view === view;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      /* Lazy images inside a display:none view are not loaded until shown;
+         re-trigger by forcing a layout pass (browsers load once visible). */
+    }
+    viewBtns.forEach(function (b) {
+      b.addEventListener("click", function () { setView(b.dataset.view); });
     });
 
     /* Video modal: close on X, backdrop, or Escape. */

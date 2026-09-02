@@ -92,13 +92,30 @@
 
         <div class="toolbar">
           <div class="filters" id="filters" role="group" aria-label="Filter publications"></div>
-          <label class="search">
-            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.24 4.24 1.42-1.42-4.25-4.24A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z"/></svg>
-            <input type="search" id="search-input" placeholder="Search title, author or venue…" autocomplete="off" />
-          </label>
+          <div class="toolbar-right">
+            <div class="view-toggle" role="group" aria-label="View mode">
+              <button type="button" class="view-btn active" data-view="grid" aria-pressed="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h8v8H3zM13 3h8v8h-8zM3 13h8v8H3zM13 13h8v8h-8z"/></svg>
+                <span>Grid</span>
+              </button>
+              <button type="button" class="view-btn" data-view="timeline" aria-pressed="false">
+                <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11h2.5v2H3zM8 11h2.5v2H8zM13.5 11H16v2h-2.5zM18 11h3v2h-3zM5 9h2v6H5zM10.5 9H13v6h-2.5zM16 9h2.5v6H16z" transform="translate(0 -1)"/></svg>
+                <span>Timeline</span>
+              </button>
+            </div>
+            <label class="search">
+              <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 4a6 6 0 104.47 10.03l4.24 4.24 1.42-1.42-4.25-4.24A6 6 0 0010 4zm0 2a4 4 0 110 8 4 4 0 010-8z"/></svg>
+              <input type="search" id="search-input" placeholder="Search title, author or venue…" autocomplete="off" />
+            </label>
+          </div>
         </div>
 
-        <div class="grid" id="grid" aria-live="polite"></div>
+        <div class="view" id="view-grid">
+          <div class="grid" id="grid" aria-live="polite"></div>
+        </div>
+        <div class="view" id="view-timeline" hidden>
+          <div class="timeline" id="timeline" aria-live="polite"></div>
+        </div>
         <p class="empty" id="empty" hidden>No publications match your search.</p>
       </div>
     </section>
