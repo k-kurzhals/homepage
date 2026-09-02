@@ -339,47 +339,6 @@ a { color: inherit; }
   to   { opacity: 1; transform: translateY(0); }
 }
 
-/* timeline view */
-
-.timeline {
-  display: flex;
-  flex-direction: column;
-  gap: 0;
-}
-
-.tl-year-block {
-  display: grid;
-  grid-template-columns: 76px 1fr;
-  gap: 18px;
-  align-items: start;
-}
-
-.tl-year-label {
-  font-size: 15px;
-  font-weight: 800;
-  letter-spacing: 0.02em;
-  color: var(--ink);
-  padding: 14px 0 0;
-  text-align: right;
-}
-
-.tl-lane {
-  display: flex;
-  gap: 16px;
-  overflow-x: auto;
-  padding: 6px 4px 18px;
-  scroll-snap-type: x proximity;
-  scrollbar-width: thin;
-  scrollbar-color: var(--line-strong) transparent;
-}
-
-.tl-lane::-webkit-scrollbar { height: 8px; }
-.tl-lane::-webkit-scrollbar-track { background: transparent; }
-.tl-lane::-webkit-scrollbar-thumb {
-  background: var(--line-strong);
-  border-radius: 999px;
-}
-
 /* grid */
 
 .grid {
@@ -388,47 +347,159 @@ a { color: inherit; }
   gap: 20px;
 }
 
-/* timeline items */
+/* timeline view — single horizontal axis, cards alternate above/below.
+   The SCROLLER owns horizontal overflow; the TRACK itself does not clip,
+   so the absolutely-positioned tiles above/below the axis stay clickable. */
 
-.tl-item {
-  position: relative;
-  flex: 0 0 auto;
-  width: 250px;
-  scroll-snap-align: start;
-  display: flex;
-  flex-direction: column;
+.tl-scroller {
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
 }
 
-/* the image tile is the always-visible part of the item */
+.tl-scroller::-webkit-scrollbar { height: 8px; }
+.tl-scroller::-webkit-scrollbar-track { background: transparent; }
+.tl-scroller::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+
+.tl-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* symmetric padding keeps "center" == node center; tall enough to
+     contain the tiles (~226px) AND the tallest opened detail card
+     (~403px) on either side of the axis, so nothing is clipped */
+  padding: 412px 24px;
+  /* the axis line — painted across the full track width */
+  background:
+    linear-gradient(to right, var(--line-strong), var(--line)) no-repeat center / 100% 2px;
+}
+
+.tl-node {
+  position: relative;
+  flex: 0 0 auto;
+  width: 236px;
+  height: 0; /* zero-height anchor row: the axis runs through node centers */
+  scroll-snap-align: start;
+  animation: tl-in 0.5s ease both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+@keyframes tl-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* year marker sitting on the axis */
+
+.tl-node-year {
+  width: auto;
+  min-width: 58px;
+  height: auto;
+  margin: 0 -12px;
+  z-index: 3;
+}
+
+.tl-year-pill {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 6px var(--bg);
+}
+
+/* dot + connector stem on the axis */
+
+.tl-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px var(--line-strong);
+  z-index: 2;
+}
+
+.tl-stem {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 30px;
+  background: var(--line-strong);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.tl-item.above .tl-stem { bottom: 50%; }
+.tl-item.below .tl-stem { top: 50%; }
+
+/* the always-visible tile — anchored 30px off the axis, centered on the node */
+
+.tl-pop {
+  position: absolute;
+  left: 50%;
+  width: 236px;
+  margin-left: -118px;
+  z-index: 1;
+}
+
+.tl-item.above .tl-pop { bottom: calc(50% + 30px); }
+.tl-item.below .tl-pop { top: calc(50% + 30px); }
+
+.tl-item.open .tl-pop { z-index: 20; }
 
 .tl-trigger {
   position: relative;
   display: block;
   width: 100%;
   padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.tl-tile {
+  position: relative;
+  display: block;
+  width: 100%;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow-sm);
-  cursor: pointer;
-  text-align: left;
   overflow: hidden;
-  font-family: inherit;
-  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.2s ease;
 }
 
-.tl-trigger:hover {
+.tl-trigger:hover .tl-tile {
   transform: translateY(-4px);
   box-shadow: var(--shadow-lg);
 }
 
-.tl-item.open .tl-trigger {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(47, 109, 246, 0.14), var(--shadow-lg);
+.tl-item.open .tl-tile {
+  opacity: 0;
+  pointer-events: none;
 }
 
 .tl-media {
-  height: 140px;
+  height: 118px;
   overflow: hidden;
   background: var(--pill-bg);
 }
@@ -443,10 +514,10 @@ a { color: inherit; }
 /* hover overlay: authors over the picture (pointer devices only) */
 .tl-hover {
   position: absolute;
-  top: 1px;
-  left: 1px;
-  right: 1px;
-  height: 140px;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
   display: flex;
   align-items: flex-end;
   padding: 12px 14px;
@@ -479,7 +550,7 @@ a { color: inherit; }
   display: flex;
   flex-direction: column;
   gap: 3px;
-  padding: 12px 14px 14px;
+  padding: 10px 14px 12px;
 }
 
 .tl-year {
@@ -513,27 +584,41 @@ a { color: inherit; }
   overflow: hidden;
 }
 
-/* expanded card under the tile */
+/* selected item: detail card opens at the tile's anchor (tile fades out,
+   card fades in at the same spot, on its side of the axis) */
 
 .tl-card {
-  margin-top: 10px;
+  position: absolute;
+  left: 50%;
+  width: 236px;
+  margin-left: -118px;
   background: var(--surface);
   border: 1px solid var(--line);
   border-radius: 14px;
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--shadow-lg);
   padding: 16px 16px 14px;
+  z-index: 30;
   opacity: 0;
-  transform: translateY(-6px);
-  transition: opacity 0.22s ease, transform 0.22s ease;
   visibility: hidden;
   pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+}
+
+.tl-item.above .tl-card {
+  bottom: 0;
+  transform: translateY(-8px);
+}
+
+.tl-item.below .tl-card {
+  top: 0;
+  transform: translateY(8px);
 }
 
 .tl-item.open .tl-card {
   opacity: 1;
-  transform: translateY(0);
   visibility: visible;
   pointer-events: auto;
+  transform: translateY(0);
 }
 
 .tl-card-title {
@@ -874,9 +959,11 @@ a { color: inherit; }
   .view-toggle { align-self: flex-start; }
   .search { min-width: 0; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
-  .tl-year-block { grid-template-columns: 1fr; gap: 4px; }
-  .tl-year-label { text-align: left; padding: 2px 0 0; }
-  .tl-item { width: 220px; }
+  .tl-track { padding: 340px 14px; }
+  .tl-node { width: 208px; }
+  .tl-pop { width: 208px; margin-left: -104px; }
+  .tl-card { width: 208px; margin-left: -104px; }
+  .tl-year-pill { width: 44px; height: 44px; font-size: 11.5px; }
 }
 
 /* reduced motion */
@@ -886,8 +973,9 @@ a { color: inherit; }
   .card { transition: none; }
   .card:hover { transform: none; }
   .view { animation: none; }
-  .tl-trigger { transition: none; }
-  .tl-trigger:hover { transform: none; }
+  .tl-node { animation: none; }
+  .tl-tile { transition: none; }
+  .tl-trigger:hover .tl-tile { transform: none; }
   .tl-card { transition: none; }
   .tl-item.open .tl-card { transform: none; }
 }

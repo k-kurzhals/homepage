@@ -122,7 +122,9 @@
     );
   }
 
-  function timelineHTML(p) {
+  /* One node on the single timeline axis.
+     side = "above" | "below" (alternating), i = global node index (stagger). */
+  function timelineHTML(p, side, i) {
     var link = doiURL(p);
     var title = link
       ? '<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(p.title) + "</a>"
@@ -154,7 +156,7 @@
         '<div class="tl-media"><img alt="" src="' + PLACEHOLDER + '" loading="lazy"></div>';
     }
 
-    var desc =
+    var brief =
       '<span class="tl-year">' + p.year + "</span>" +
       '<span class="tl-title">' + title + "</span>" +
       '<span class="tl-venue">' + esc(p.venue) + "</span>";
@@ -181,17 +183,30 @@
       "</div>";
 
     return (
-      '<article class="tl-item" data-year="' + p.year + '">' +
-      '<button type="button" class="tl-trigger" aria-expanded="false">' +
-      media +
+      '<article class="tl-node tl-item ' + side + '" data-year="' + p.year + '" style="--i:' + i + '">' +
+      '<span class="tl-dot" aria-hidden="true"></span>' +
+      '<span class="tl-stem" aria-hidden="true"></span>' +
+      '<div class="tl-pop">' +
+      '<button type="button" class="tl-trigger" aria-expanded="false" aria-label="' + esc(p.title) + '">' +
+      '<span class="tl-tile">' + media +
       '<span class="tl-hover"><span class="tl-hover-authors">' + authorsHTML(p.authors) + "</span></span>" +
-      '<span class="tl-brief">' + desc + "</span>" +
+      '<span class="tl-brief">' + brief + "</span>" +
+      "</span>" +
       "</button>" +
       '<div class="tl-card" role="region" aria-label="' + esc(p.title) + '">' +
       '<h3 class="tl-card-title">' + title + "</h3>" +
       body +
       "</div>" +
+      "</div>" +
       "</article>"
+    );
+  }
+
+  function timelineYearNode(year, i) {
+    return (
+      '<div class="tl-node tl-node-year" style="--i:' + i + '">' +
+      '<span class="tl-year-pill">' + year + "</span>" +
+      "</div>"
     );
   }
 
@@ -215,25 +230,22 @@
 
     grid.innerHTML = out.map(cardHTML).join("");
 
-    /* Timeline: group by year, newest year first. */
-    var groups = [];
-    var byYear = {};
-    out.forEach(function (p) {
-      if (!byYear[p.year]) {
-        byYear[p.year] = [];
-        groups.push(p.year);
-      }
-      byYear[p.year].push(p);
+    /* Timeline: ONE horizontal axis, oldest -> newest. Year nodes sit on
+       the axis; publication nodes alternate above/below it. */
+    var sorted = out.slice().sort(function (a, b) {
+      return a.year - b.year || a.title.localeCompare(b.title);
     });
-    groups.sort(function (a, b) { return b - a; });
-    timeline.innerHTML = groups.map(function (y) {
-      return (
-        '<section class="tl-year-block">' +
-        '<div class="tl-year-label" aria-hidden="true">' + y + "</div>" +
-        '<div class="tl-lane">' + byYear[y].map(timelineHTML).join("") + "</div>" +
-        "</section>"
-      );
-    }).join("");
+    var tlParts = [];
+    var curYear = null, nodeIdx = 0, pubIdx = 0;
+    sorted.forEach(function (p) {
+      if (p.year !== curYear) {
+        curYear = p.year;
+        tlParts.push(timelineYearNode(curYear, nodeIdx++));
+      }
+      tlParts.push(timelineHTML(p, pubIdx % 2 === 0 ? "above" : "below", nodeIdx++));
+      pubIdx++;
+    });
+    timeline.innerHTML = '<div class="tl-scroller"><div class="tl-track">' + tlParts.join("") + "</div></div>";
 
     wireMediaFallbacks();
     wireInteractions();
