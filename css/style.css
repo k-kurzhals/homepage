@@ -287,6 +287,58 @@ a { color: inherit; }
 
 .search input::placeholder { color: var(--muted); }
 
+/* view toggle */
+
+.toolbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.view-toggle {
+  display: inline-flex;
+  padding: 3px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong);
+  background: var(--pill-bg);
+  gap: 3px;
+}
+
+.view-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 14px;
+  border: 0;
+  border-radius: 999px;
+  background: transparent;
+  font-family: inherit;
+  font-size: 13.5px;
+  font-weight: 600;
+  color: var(--pill-ink);
+  cursor: pointer;
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.view-btn svg { width: 15px; height: 15px; fill: currentColor; opacity: 0.75; }
+
+.view-btn:hover { color: var(--ink); }
+
+.view-btn.active {
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-sm);
+}
+
+.view-btn.active svg { opacity: 1; }
+
+/* view switching — crossfade + lift */
+
+.view {
+  animation: view-in 0.35s ease both;
+}
+
+@keyframes view-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* grid */
 
 .grid {
@@ -294,6 +346,396 @@ a { color: inherit; }
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 20px;
 }
+
+/* timeline view — single horizontal axis, cards alternate above/below.
+   The SCROLLER owns horizontal overflow; the TRACK itself does not clip,
+   so the absolutely-positioned tiles above/below the axis stay clickable. */
+
+.tl-scroller {
+  overflow-x: auto;
+  padding-bottom: 10px;
+  scroll-snap-type: x proximity;
+  scrollbar-width: thin;
+  scrollbar-color: var(--line-strong) transparent;
+}
+
+/* positioned wrapper so the "more →" hint can be pinned to the scroller's
+   viewport edge (an abs-positioned child of the scroller itself would
+   scroll away with the content) */
+.timeline { position: relative; }
+
+.tl-scroller::-webkit-scrollbar { height: 8px; }
+.tl-scroller::-webkit-scrollbar-track { background: transparent; }
+.tl-scroller::-webkit-scrollbar-thumb {
+  background: var(--line-strong);
+  border-radius: 999px;
+}
+
+.tl-track {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  /* symmetric padding keeps "center" == node center; tall enough to
+     contain the tiles (~226px) AND the tallest opened detail card
+     (~403px) on either side of the axis, so nothing is clipped */
+  padding: 412px 24px;
+  /* the axis line — a dashed line painted across the full track width,
+     so the eye can follow the whole span at a glance */
+  background:
+    repeating-linear-gradient(90deg,
+      var(--line-strong) 0 10px,
+      transparent 10px 22px) no-repeat center / 100% 2px;
+}
+
+.tl-node {
+  position: relative;
+  flex: 0 0 auto;
+  width: 236px;
+  height: 0; /* zero-height anchor row: the axis runs through node centers */
+  scroll-snap-align: start;
+  animation: tl-in 0.5s ease both;
+  animation-delay: calc(var(--i, 0) * 22ms);
+}
+
+@keyframes tl-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+
+/* year marker sitting on the axis */
+
+.tl-node-year {
+  width: auto;
+  min-width: 58px;
+  height: auto;
+  margin: 0 -12px;
+  z-index: 3;
+}
+
+.tl-year-pill {
+  position: relative;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background: var(--ink);
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  box-shadow: 0 0 0 6px var(--bg), 0 0 0 7px var(--line-strong);
+}
+
+/* dot + connector stem on the axis */
+
+.tl-dot {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 12px;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px var(--line-strong);
+  z-index: 2;
+}
+
+.tl-stem {
+  position: absolute;
+  left: 50%;
+  width: 2px;
+  height: 30px;
+  background: var(--line-strong);
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+.tl-item.above .tl-stem { bottom: 50%; }
+.tl-item.below .tl-stem { top: 50%; }
+
+/* selected item: dot + stem light up in accent */
+.tl-item.open .tl-dot {
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--accent), 0 0 16px rgba(47, 109, 246, 0.4);
+}
+.tl-item.open .tl-stem { background: var(--accent); }
+
+/* the always-visible tile — anchored 30px off the axis, centered on the node */
+
+.tl-pop {
+  position: absolute;
+  left: 50%;
+  width: 236px;
+  margin-left: -118px;
+  z-index: 1;
+}
+
+.tl-item.above .tl-pop { bottom: calc(50% + 30px); }
+.tl-item.below .tl-pop { top: calc(50% + 30px); }
+
+.tl-item.open .tl-pop { z-index: 20; }
+
+.tl-trigger {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  font-family: inherit;
+}
+
+.tl-tile {
+  position: relative;
+  display: block;
+  width: 100%;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease, opacity 0.2s ease;
+}
+
+.tl-trigger:hover .tl-tile {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow-lg);
+}
+
+.tl-item.open .tl-tile {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* open state: the detail card gets an accent border + stronger shadow,
+   and a small "more →" hint fades in at the right edge of the scroller */
+.tl-item.open .tl-card {
+  border-color: var(--accent);
+  box-shadow: 0 14px 34px rgba(47, 109, 246, 0.14), var(--shadow-lg);
+}
+
+.timeline::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.timeline.more::after { opacity: 1; }
+
+/* close (×) button in the detail card */
+.tl-card-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tl-card-close svg { width: 13px; height: 13px; fill: currentColor; }
+.tl-card-close:hover { background: var(--pill-bg); color: var(--ink); }
+
+.tl-media {
+  height: 118px;
+  overflow: hidden;
+  background: var(--pill-bg);
+}
+
+.tl-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* hover overlay: authors over the picture (pointer devices only) */
+.tl-hover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 118px;
+  display: flex;
+  align-items: flex-end;
+  padding: 12px 14px;
+  background: linear-gradient(to top, rgba(13, 13, 13, 0.72) 0%, rgba(13, 13, 13, 0.35) 55%, rgba(13, 13, 13, 0) 100%);
+  opacity: 0;
+  transition: opacity 0.18s ease;
+  pointer-events: none;
+}
+
+.tl-hover-authors {
+  color: #fff;
+  font-size: 12.5px;
+  font-weight: 500;
+  line-height: 1.45;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+}
+
+.tl-hover-authors strong { font-weight: 700; }
+
+.tl-trigger:hover .tl-hover,
+.tl-trigger:focus-visible .tl-hover {
+  opacity: 1;
+}
+
+@media (hover: none) {
+  .tl-hover { display: none; }
+}
+
+.tl-brief {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 10px 14px 12px;
+}
+
+.tl-year {
+  font-size: 11.5px;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--accent);
+}
+
+.tl-title {
+  font-size: 13.5px;
+  font-weight: 700;
+  line-height: 1.35;
+  color: var(--ink);
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tl-title a { text-decoration: none; color: inherit; }
+.tl-trigger:hover .tl-title a { color: var(--accent); }
+
+.tl-venue {
+  font-size: 12px;
+  color: var(--muted);
+  font-style: italic;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+/* selected item: detail card opens at the tile's anchor (tile fades out,
+   card fades in at the same spot, on its side of the axis) */
+
+.tl-card {
+  position: absolute;
+  left: 50%;
+  width: 236px;
+  margin-left: -118px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  box-shadow: var(--shadow-lg);
+  padding: 16px 16px 14px;
+  z-index: 30;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition: opacity 0.22s ease, transform 0.22s ease, visibility 0.22s;
+}
+
+.tl-item.above .tl-card {
+  bottom: 0;
+  transform: translateY(-8px);
+}
+
+.tl-item.below .tl-card {
+  top: 0;
+  transform: translateY(8px);
+}
+
+.tl-item.open .tl-card {
+  opacity: 1;
+  visibility: visible;
+  pointer-events: auto;
+  transform: translateY(0);
+}
+
+.tl-card-title {
+  margin: 0 0 10px;
+  padding-right: 22px; /* keep clear of the × button */
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.35;
+  letter-spacing: -0.01em;
+}
+
+.tl-card-title a { text-decoration: none; color: inherit; }
+.tl-card-title a:hover { color: var(--accent); }
+
+.tl-authors {
+  margin: 0 0 6px;
+  font-size: 13px;
+  color: var(--ink-soft);
+}
+
+.tl-venue2 {
+  margin: 0 0 8px;
+  font-size: 12.5px;
+  color: var(--muted);
+  font-style: italic;
+}
+
+.tl-detail {
+  margin: 0 0 10px;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ink-soft);
+  display: -webkit-box;
+  -webkit-line-clamp: 6;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.tl-foot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+}
+
+.tl-video-slot { display: inline-flex; }
+
+.tl-link {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--accent);
+  text-decoration: none;
+}
+
+.tl-link:hover { text-decoration: underline; }
 
 /* card media (optional publication image) */
 
@@ -574,8 +1016,15 @@ a { color: inherit; }
   .main-nav { gap: 18px; }
   .main-nav a { font-size: 12px; }
   .toolbar { flex-direction: column; align-items: stretch; }
+  .toolbar-right { flex-direction: column; align-items: stretch; }
+  .view-toggle { align-self: flex-start; }
   .search { min-width: 0; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
+  .tl-track { padding: 340px 14px; }
+  .tl-node { width: 208px; }
+  .tl-pop { width: 208px; margin-left: -104px; }
+  .tl-card { width: 208px; margin-left: -104px; }
+  .tl-year-pill { width: 44px; height: 44px; font-size: 11.5px; }
 }
 
 /* reduced motion */
@@ -584,4 +1033,10 @@ a { color: inherit; }
   html { scroll-behavior: auto; }
   .card { transition: none; }
   .card:hover { transform: none; }
+  .view { animation: none; }
+  .tl-node { animation: none; }
+  .tl-tile { transition: none; }
+  .tl-trigger:hover .tl-tile { transform: none; }
+  .tl-card { transition: none; }
+  .tl-item.open .tl-card { transform: none; }
 }

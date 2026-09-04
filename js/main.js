@@ -14,13 +14,17 @@
     thesis: "Dissertation"
   };
 
-  var state = { all: [], filter: "all", query: "" };
+  var state = { all: [], filter: "all", query: "", view: "grid", openId: null };
 
   var grid = document.getElementById("grid");
+  var timeline = document.getElementById("timeline");
   var empty = document.getElementById("empty");
   var filtersEl = document.getElementById("filters");
   var searchInput = document.getElementById("search-input");
   var pubCount = document.getElementById("pub-count");
+  var viewGrid = document.getElementById("view-grid");
+  var viewTimeline = document.getElementById("view-timeline");
+  var viewBtns = Array.prototype.slice.call(document.querySelectorAll(".view-btn"));
 
   /* ---------- helpers ---------- */
 
@@ -118,6 +122,97 @@
     );
   }
 
+  /* One node on the single timeline axis.
+     side = "above" | "below" (alternating), i = global node index (stagger). */
+  function timelineHTML(p, side, i) {
+    var link = doiURL(p);
+    var title = link
+      ? '<a href="' + esc(link) + '" target="_blank" rel="noopener">' + esc(p.title) + "</a>"
+      : esc(p.title);
+
+    /* Image handling mirrors cardHTML (string path / auto-detect / placeholder). */
+    var media;
+    if (p.image) {
+      var srcs;
+      if (typeof p.image === "string") {
+        srcs = [p.image];
+      } else {
+        var variants = [p.title];
+        var norm = p.title.trim().replace(/\?+$/, "").replace(/:\s*/g, " - ");
+        if (norm !== p.title) variants.push(norm);
+        srcs = [];
+        [".png", ".jpg", ".jpeg", ".webp"].forEach(function (ext) {
+          variants.forEach(function (v) {
+            var s = "img/" + encodeURIComponent(v) + ext;
+            if (srcs.indexOf(s) === -1) srcs.push(s);
+          });
+        });
+      }
+      media =
+        '<div class="tl-media"><img alt="" src="' + esc(srcs[0]) +
+        '" data-cands="' + esc(srcs.join("|")) + '" loading="lazy"></div>';
+    } else {
+      media =
+        '<div class="tl-media"><img alt="" src="' + PLACEHOLDER + '" loading="lazy"></div>';
+    }
+
+    var brief =
+      '<span class="tl-year">' + p.year + "</span>" +
+      '<span class="tl-title">' + title + "</span>" +
+      '<span class="tl-venue">' + esc(p.venue) + "</span>";
+
+    var videoBtn = p.video ?
+      '<a class="card-video" href="' + esc(p.video) + '" data-video="' + esc(p.video) +
+      '" title="Watch video" aria-label="Watch video">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg></a>' : "";
+
+    var body =
+      '<p class="tl-authors">' + authorsHTML(p.authors) + "</p>" +
+      '<p class="tl-venue2">' + esc(p.venue) + "</p>";
+    if (p.detail) {
+      body += '<p class="tl-detail">' + esc(p.detail) + "</p>";
+    }
+    body +=
+      '<div class="tl-foot"><span class="tag">' + esc(CAT_LABELS[p.cat] || p.cat) + "</span>" +
+      (videoBtn
+        ? '<span class="tl-video-slot">' + videoBtn + "</span>"
+        : "") +
+      (p.doi || p.url
+        ? '<a class="tl-link" href="' + esc(doiURL(p)) + '" target="_blank" rel="noopener">Paper ↗</a>'
+        : "") +
+      "</div>";
+
+    return (
+      '<article class="tl-node tl-item ' + side + '" id="tl-' + p.id + '" data-year="' + p.year + '" style="--i:' + i + '">' +
+      '<span class="tl-dot" aria-hidden="true"></span>' +
+      '<span class="tl-stem" aria-hidden="true"></span>' +
+      '<div class="tl-pop">' +
+      '<button type="button" class="tl-trigger" aria-expanded="false" aria-label="' + esc(p.title) + '">' +
+      '<span class="tl-tile">' + media +
+      '<span class="tl-hover"><span class="tl-hover-authors">' + authorsHTML(p.authors) + "</span></span>" +
+      '<span class="tl-brief">' + brief + "</span>" +
+      "</span>" +
+      "</button>" +
+      '<div class="tl-card" role="region" aria-label="' + esc(p.title) + '">' +
+      '<h3 class="tl-card-title">' + title + '</h3>' +
+      '<button type="button" class="tl-card-close" aria-label="Close">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6Z"/></svg>' +
+      "</button>" +
+      body +
+      "</div>" +
+      "</div>" +
+      "</article>"
+    );
+  }
+
+  function timelineYearNode(year, i) {
+    return (
+      '<div class="tl-node tl-node-year" style="--i:' + i + '">' +
+      '<span class="tl-year-pill">' + year + "</span>" +
+      "</div>"
+    );
+  }
+
   /* ---------- filtering ---------- */
 
   function apply() {
@@ -137,8 +232,38 @@
     });
 
     grid.innerHTML = out.map(cardHTML).join("");
+
+    /* Timeline: ONE horizontal axis, oldest -> newest. Year nodes sit on
+       the axis; publication nodes alternate above/below it. Rebuilding the
+       DOM discards the open detail card, so remember which item was open
+       and re-open it after the rebuild if it survived the filter. */
+    var prevOpenId = state.openId;
+    state.openId = null;
+    var sorted = out.slice().sort(function (a, b) {
+      return a.year - b.year || a.title.localeCompare(b.title);
+    });
+    var tlParts = [];
+    var curYear = null, nodeIdx = 0, pubIdx = 0;
+    sorted.forEach(function (p) {
+      if (p.year !== curYear) {
+        curYear = p.year;
+        tlParts.push(timelineYearNode(curYear, nodeIdx++));
+      }
+      tlParts.push(timelineHTML(p, pubIdx % 2 === 0 ? "above" : "below", nodeIdx++));
+      pubIdx++;
+    });
+    timeline.innerHTML = '<div class="tl-scroller"><div class="tl-track">' + tlParts.join("") + "</div></div>";
+
     wireMediaFallbacks();
     wireInteractions();
+    if (prevOpenId) {
+      var kept = timeline.querySelector('.tl-item[id="' + CSS.escape(prevOpenId) + '"]');
+      if (kept) {
+        kept.classList.add("open");
+        kept.querySelector(".tl-trigger").setAttribute("aria-expanded", "true");
+        state.openId = prevOpenId;
+      }
+    }
     empty.hidden = out.length !== 0;
   }
 
@@ -146,7 +271,7 @@
      loads; if none exist, swap in the placeholder banner. */
   var PLACEHOLDER = "img/placeholder.png";
   function wireMediaFallbacks() {
-    grid.querySelectorAll(".card-media img[data-cands]").forEach(function (img) {
+    document.querySelectorAll(".card-media img[data-cands], .tl-media img[data-cands]").forEach(function (img) {
       var cands = img.dataset.cands.split("|");
       var i = 0;
       img.onerror = function () {
@@ -161,7 +286,7 @@
     });
   }
 
-   /* Collapse/expand detail text + open video modals. */
+  /* Collapse/expand detail text + open video modals + timeline items. */
   function wireInteractions() {
     grid.querySelectorAll(".detail-toggle").forEach(function (btn) {
       btn.addEventListener("click", function () {
@@ -172,9 +297,71 @@
       });
     });
 
+    /* Timeline: one open item at a time. Re-activating the SAME item
+       (or its × button, or an empty axis spot, or Escape) closes it, so a
+       selected publication can always be unselected without clicking
+       another one first. */
+    function openTimelineItem(item) {
+      var wasOpen = item.classList.contains("open");
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      if (!wasOpen) {
+        item.classList.add("open");
+        item.querySelector(".tl-trigger").setAttribute("aria-expanded", "true");
+      }
+      state.openId = wasOpen ? null : (item.id || null);
+    }
+
+    document.querySelectorAll(".tl-item").forEach(function (item) {
+      var btn = item.querySelector(".tl-trigger");
+      if (btn) btn.addEventListener("click", function (ev) {
+        /* Title links inside the trigger still open the paper. */
+        if (ev.target.closest("a")) return;
+        openTimelineItem(item);
+      });
+      var closeBtn = item.querySelector(".tl-card-close");
+      if (closeBtn) closeBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (item.classList.contains("open")) openTimelineItem(item);
+      });
+    });
+
+    /* Clicking an empty spot on the axis (not a tile/card/link) deselects. */
+    var scroller = timeline.querySelector(".tl-scroller");
+    if (scroller) scroller.addEventListener("click", function (ev) {
+      if (ev.target.closest(".tl-trigger, .tl-card, a, button")) return;
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      state.openId = null;
+    });
+
+    /* "more →" hint at the right edge while there is more timeline to scroll.
+       The class lives on the .timeline wrapper (the ::after is pinned to its
+       viewport edge, not the scrolling track). apply() rebuilds the scroller
+       node, so always query it live; the scroll listener is (re)attached to
+       the current scroller on every render, the resize handler once. */
+    function updateTlHint() {
+      var s = timeline.querySelector(".tl-scroller");
+      if (!s) return;
+      var more = s.scrollLeft + s.clientWidth < s.scrollWidth - 8;
+      timeline.classList.toggle("more", more);
+    }
+    if (scroller) {
+      scroller.addEventListener("scroll", updateTlHint, { passive: true });
+    }
+    if (!timeline._hintWired) {
+      timeline._hintWired = true;
+      window.addEventListener("resize", updateTlHint);
+    }
+    updateTlHint();
+
     var modal = document.getElementById("video-modal");
     var frame = document.getElementById("video-frame");
-    grid.querySelectorAll(".card-video").forEach(function (a) {
+    document.querySelectorAll(".card-video").forEach(function (a) {
       a.addEventListener("click", function (ev) {
         ev.preventDefault();
         var url = a.getAttribute("href");
@@ -247,6 +434,25 @@
       apply();
     });
 
+    /* View toggle: grid <-> timeline (both views stay rendered, so the
+       CSS crossfade is cheap and no re-render is needed). */
+    function setView(view) {
+      if (view !== "grid" && view !== "timeline") return;
+      state.view = view;
+      viewGrid.hidden = view !== "grid";
+      viewTimeline.hidden = view !== "timeline";
+      viewBtns.forEach(function (b) {
+        var on = b.dataset.view === view;
+        b.classList.toggle("active", on);
+        b.setAttribute("aria-pressed", on ? "true" : "false");
+      });
+      /* Lazy images inside a display:none view are not loaded until shown;
+         re-trigger by forcing a layout pass (browsers load once visible). */
+    }
+    viewBtns.forEach(function (b) {
+      b.addEventListener("click", function () { setView(b.dataset.view); });
+    });
+
     /* Video modal: close on X, backdrop, or Escape. */
     var modal = document.getElementById("video-modal");
     var frame = document.getElementById("video-frame");
@@ -260,7 +466,17 @@
       if (ev.target === modal) closeModal();
     });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && modal.classList.contains("show")) closeModal();
+      if (ev.key !== "Escape") return;
+      if (modal.classList.contains("show")) {
+        closeModal();
+        return;
+      }
+      /* Escape deselects the open timeline card. */
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      state.openId = null;
     });
 
     apply();
