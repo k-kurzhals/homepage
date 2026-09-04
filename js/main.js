@@ -14,7 +14,7 @@
     thesis: "Dissertation"
   };
 
-  var state = { all: [], filter: "all", query: "", view: "grid" };
+  var state = { all: [], filter: "all", query: "", view: "grid", openId: null };
 
   var grid = document.getElementById("grid");
   var timeline = document.getElementById("timeline");
@@ -183,7 +183,7 @@
       "</div>";
 
     return (
-      '<article class="tl-node tl-item ' + side + '" data-year="' + p.year + '" style="--i:' + i + '">' +
+      '<article class="tl-node tl-item ' + side + '" id="tl-' + p.id + '" data-year="' + p.year + '" style="--i:' + i + '">' +
       '<span class="tl-dot" aria-hidden="true"></span>' +
       '<span class="tl-stem" aria-hidden="true"></span>' +
       '<div class="tl-pop">' +
@@ -194,7 +194,10 @@
       "</span>" +
       "</button>" +
       '<div class="tl-card" role="region" aria-label="' + esc(p.title) + '">' +
-      '<h3 class="tl-card-title">' + title + "</h3>" +
+      '<h3 class="tl-card-title">' + title + '</h3>' +
+      '<button type="button" class="tl-card-close" aria-label="Close">' +
+      '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6.4 5 5 6.4 10.6 12 5 17.6 6.4 19 12 13.4 17.6 19 19 17.6 13.4 12 19 6.4 17.6 5 12 10.6Z"/></svg>' +
+      "</button>" +
       body +
       "</div>" +
       "</div>" +
@@ -231,7 +234,11 @@
     grid.innerHTML = out.map(cardHTML).join("");
 
     /* Timeline: ONE horizontal axis, oldest -> newest. Year nodes sit on
-       the axis; publication nodes alternate above/below it. */
+       the axis; publication nodes alternate above/below it. Rebuilding the
+       DOM discards the open detail card, so remember which item was open
+       and re-open it after the rebuild if it survived the filter. */
+    var prevOpenId = state.openId;
+    state.openId = null;
     var sorted = out.slice().sort(function (a, b) {
       return a.year - b.year || a.title.localeCompare(b.title);
     });
@@ -249,6 +256,14 @@
 
     wireMediaFallbacks();
     wireInteractions();
+    if (prevOpenId) {
+      var kept = timeline.querySelector('.tl-item[id="' + CSS.escape(prevOpenId) + '"]');
+      if (kept) {
+        kept.classList.add("open");
+        kept.querySelector(".tl-trigger").setAttribute("aria-expanded", "true");
+        state.openId = prevOpenId;
+      }
+    }
     empty.hidden = out.length !== 0;
   }
 
@@ -282,23 +297,67 @@
       });
     });
 
-    /* Timeline items: click toggles the detail card. */
-    document.querySelectorAll(".tl-trigger").forEach(function (btn) {
-      btn.addEventListener("click", function (ev) {
+    /* Timeline: one open item at a time. Re-activating the SAME item
+       (or its × button, or an empty axis spot, or Escape) closes it, so a
+       selected publication can always be unselected without clicking
+       another one first. */
+    function openTimelineItem(item) {
+      var wasOpen = item.classList.contains("open");
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      if (!wasOpen) {
+        item.classList.add("open");
+        item.querySelector(".tl-trigger").setAttribute("aria-expanded", "true");
+      }
+      state.openId = wasOpen ? null : (item.id || null);
+    }
+
+    document.querySelectorAll(".tl-item").forEach(function (item) {
+      var btn = item.querySelector(".tl-trigger");
+      if (btn) btn.addEventListener("click", function (ev) {
         /* Title links inside the trigger still open the paper. */
         if (ev.target.closest("a")) return;
-        var item = btn.closest(".tl-item");
-        var wasOpen = item.classList.contains("open");
-        document.querySelectorAll(".tl-item.open").forEach(function (o) {
-          o.classList.remove("open");
-          o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
-        });
-        if (!wasOpen) {
-          item.classList.add("open");
-          btn.setAttribute("aria-expanded", "true");
-        }
+        openTimelineItem(item);
+      });
+      var closeBtn = item.querySelector(".tl-card-close");
+      if (closeBtn) closeBtn.addEventListener("click", function (ev) {
+        ev.stopPropagation();
+        if (item.classList.contains("open")) openTimelineItem(item);
       });
     });
+
+    /* Clicking an empty spot on the axis (not a tile/card/link) deselects. */
+    var scroller = timeline.querySelector(".tl-scroller");
+    if (scroller) scroller.addEventListener("click", function (ev) {
+      if (ev.target.closest(".tl-trigger, .tl-card, a, button")) return;
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      state.openId = null;
+    });
+
+    /* "more →" hint at the right edge while there is more timeline to scroll.
+       The class lives on the .timeline wrapper (the ::after is pinned to its
+       viewport edge, not the scrolling track). apply() rebuilds the scroller
+       node, so always query it live; the scroll listener is (re)attached to
+       the current scroller on every render, the resize handler once. */
+    function updateTlHint() {
+      var s = timeline.querySelector(".tl-scroller");
+      if (!s) return;
+      var more = s.scrollLeft + s.clientWidth < s.scrollWidth - 8;
+      timeline.classList.toggle("more", more);
+    }
+    if (scroller) {
+      scroller.addEventListener("scroll", updateTlHint, { passive: true });
+    }
+    if (!timeline._hintWired) {
+      timeline._hintWired = true;
+      window.addEventListener("resize", updateTlHint);
+    }
+    updateTlHint();
 
     var modal = document.getElementById("video-modal");
     var frame = document.getElementById("video-frame");
@@ -407,7 +466,17 @@
       if (ev.target === modal) closeModal();
     });
     document.addEventListener("keydown", function (ev) {
-      if (ev.key === "Escape" && modal.classList.contains("show")) closeModal();
+      if (ev.key !== "Escape") return;
+      if (modal.classList.contains("show")) {
+        closeModal();
+        return;
+      }
+      /* Escape deselects the open timeline card. */
+      document.querySelectorAll(".tl-item.open").forEach(function (o) {
+        o.classList.remove("open");
+        o.querySelector(".tl-trigger").setAttribute("aria-expanded", "false");
+      });
+      state.openId = null;
     });
 
     apply();

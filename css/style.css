@@ -359,6 +359,11 @@ a { color: inherit; }
   scrollbar-color: var(--line-strong) transparent;
 }
 
+/* positioned wrapper so the "more →" hint can be pinned to the scroller's
+   viewport edge (an abs-positioned child of the scroller itself would
+   scroll away with the content) */
+.timeline { position: relative; }
+
 .tl-scroller::-webkit-scrollbar { height: 8px; }
 .tl-scroller::-webkit-scrollbar-track { background: transparent; }
 .tl-scroller::-webkit-scrollbar-thumb {
@@ -375,9 +380,12 @@ a { color: inherit; }
      contain the tiles (~226px) AND the tallest opened detail card
      (~403px) on either side of the axis, so nothing is clipped */
   padding: 412px 24px;
-  /* the axis line — painted across the full track width */
+  /* the axis line — a dashed line painted across the full track width,
+     so the eye can follow the whole span at a glance */
   background:
-    linear-gradient(to right, var(--line-strong), var(--line)) no-repeat center / 100% 2px;
+    repeating-linear-gradient(90deg,
+      var(--line-strong) 0 10px,
+      transparent 10px 22px) no-repeat center / 100% 2px;
 }
 
 .tl-node {
@@ -418,7 +426,7 @@ a { color: inherit; }
   font-size: 12.5px;
   font-weight: 800;
   letter-spacing: 0.02em;
-  box-shadow: 0 0 0 6px var(--bg);
+  box-shadow: 0 0 0 6px var(--bg), 0 0 0 7px var(--line-strong);
 }
 
 /* dot + connector stem on the axis */
@@ -448,6 +456,12 @@ a { color: inherit; }
 
 .tl-item.above .tl-stem { bottom: 50%; }
 .tl-item.below .tl-stem { top: 50%; }
+
+/* selected item: dot + stem light up in accent */
+.tl-item.open .tl-dot {
+  box-shadow: 0 0 0 4px var(--bg), 0 0 0 6px var(--accent), 0 0 16px rgba(47, 109, 246, 0.4);
+}
+.tl-item.open .tl-stem { background: var(--accent); }
 
 /* the always-visible tile — anchored 30px off the axis, centered on the node */
 
@@ -497,6 +511,52 @@ a { color: inherit; }
   opacity: 0;
   pointer-events: none;
 }
+
+/* open state: the detail card gets an accent border + stronger shadow,
+   and a small "more →" hint fades in at the right edge of the scroller */
+.tl-item.open .tl-card {
+  border-color: var(--accent);
+  box-shadow: 0 14px 34px rgba(47, 109, 246, 0.14), var(--shadow-lg);
+}
+
+.timeline::after {
+  content: "→";
+  position: absolute;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: var(--surface);
+  border: 1px solid var(--line-strong);
+  color: var(--muted);
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--shadow-sm);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+}
+.timeline.more::after { opacity: 1; }
+
+/* close (×) button in the detail card */
+.tl-card-close {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+.tl-card-close svg { width: 13px; height: 13px; fill: currentColor; }
+.tl-card-close:hover { background: var(--pill-bg); color: var(--ink); }
 
 .tl-media {
   height: 118px;
@@ -623,6 +683,7 @@ a { color: inherit; }
 
 .tl-card-title {
   margin: 0 0 10px;
+  padding-right: 22px; /* keep clear of the × button */
   font-size: 15px;
   font-weight: 700;
   line-height: 1.35;
