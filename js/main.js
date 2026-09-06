@@ -310,6 +310,20 @@
       if (!wasOpen) {
         item.classList.add("open");
         item.querySelector(".tl-trigger").setAttribute("aria-expanded", "true");
+        /* On phones the detail card opens as a fixed bottom sheet that
+           covers the tiles, so center the owning node horizontally to
+           keep the paper visible above the sheet. */
+        if (window.matchMedia("(max-width: 680px)").matches) {
+          var s = timeline.querySelector(".tl-scroller");
+          if (s) {
+            var r = item.getBoundingClientRect();
+            var sr = s.getBoundingClientRect();
+            s.scrollTo({
+              left: s.scrollLeft + (r.left + r.width / 2) - (sr.left + sr.width / 2),
+              behavior: "smooth"
+            });
+          }
+        }
       }
       state.openId = wasOpen ? null : (item.id || null);
     }

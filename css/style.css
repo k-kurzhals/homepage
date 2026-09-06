@@ -328,15 +328,17 @@ a { color: inherit; }
 
 .view-btn.active svg { opacity: 1; }
 
-/* view switching — crossfade + lift */
+/* view switching — crossfade. (No transform here: a fill-both transform
+   on .view would become the containing block for the mobile bottom-sheet
+   card and break its position:fixed.) */
 
 .view {
   animation: view-in 0.35s ease both;
 }
 
 @keyframes view-in {
-  from { opacity: 0; transform: translateY(10px); }
-  to   { opacity: 1; transform: translateY(0); }
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 
 /* grid */
@@ -361,8 +363,9 @@ a { color: inherit; }
 
 /* positioned wrapper so the "more →" hint can be pinned to the scroller's
    viewport edge (an abs-positioned child of the scroller itself would
-   scroll away with the content) */
-.timeline { position: relative; }
+   scroll away with the content). --tl-pad = vertical track padding, kept
+   in sync with the hint position (the axis line sits at the top pad). */
+.timeline { position: relative; --tl-pad: 412px; }
 
 .tl-scroller::-webkit-scrollbar { height: 8px; }
 .tl-scroller::-webkit-scrollbar-track { background: transparent; }
@@ -379,7 +382,7 @@ a { color: inherit; }
   /* symmetric padding keeps "center" == node center; tall enough to
      contain the tiles (~226px) AND the tallest opened detail card
      (~403px) on either side of the axis, so nothing is clipped */
-  padding: 412px 24px;
+  padding: var(--tl-pad) 24px;
   /* the axis line — a dashed line painted across the full track width,
      so the eye can follow the whole span at a glance */
   background:
@@ -522,7 +525,7 @@ a { color: inherit; }
 .timeline::after {
   content: "→";
   position: absolute;
-  top: 50%;
+  top: var(--tl-pad); /* axis line position, not 50% (the track is not centered) */
   right: 10px;
   transform: translateY(-50%);
   padding: 6px 10px;
@@ -1020,11 +1023,45 @@ a { color: inherit; }
   .view-toggle { align-self: flex-start; }
   .search { min-width: 0; }
   .footer-inner { flex-direction: column; align-items: flex-start; }
-  .tl-track { padding: 340px 14px; }
+
+  /* Timeline on phones: the alternating cards are too tall to live inside
+     the track (they forced the whole scroller ~950px tall, so the axis
+     and tiles sat off-screen and every tap opened a card below the fold).
+     - keep the track short: tiles + a little room, no card headroom
+     - the open detail card becomes a fixed bottom sheet instead of
+       floating next to its node */
+  .timeline { --tl-pad: 280px; } /* 30px offset + 245px tile, fully visible */
   .tl-node { width: 208px; }
   .tl-pop { width: 208px; margin-left: -104px; }
-  .tl-card { width: 208px; margin-left: -104px; }
   .tl-year-pill { width: 44px; height: 44px; font-size: 11.5px; }
+  /* detail card -> fixed bottom sheet. Targeting `.tl-item.* .tl-card`
+     (2 classes) so it beats the base `.tl-item.above/.below .tl-card`
+     positioning rules (also 2 classes, but earlier in the file). */
+  .tl-item.above .tl-card,
+  .tl-item.below .tl-card {
+    position: fixed;
+    left: 12px;
+    right: 12px;
+    top: auto;
+    bottom: 12px;
+    margin: 0;
+    width: auto;
+    max-height: min(78vh, 640px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    border-radius: 16px 16px 0 0;
+    box-shadow: 0 -12px 40px rgba(13, 13, 13, 0.28);
+    transform: translateY(calc(100% + 20px));
+    z-index: 60;
+  }
+  .tl-item.open .tl-card {
+    transform: translateY(0);
+    border-color: var(--accent);
+    box-shadow: 0 -12px 40px rgba(13, 13, 13, 0.28), 0 0 0 2px var(--accent);
+  }
+  /* the always-visible tile stays in place; only the sheet fades/slides in */
+  .tl-item.open .tl-tile { opacity: 1; pointer-events: auto; }
+  .tl-card-close { top: 8px; right: 8px; width: 32px; height: 32px; background: var(--pill-bg); }
 }
 
 /* reduced motion */
